@@ -32,10 +32,20 @@ El pipeline realiza las siguientes tareas de ingeniería de datos:
 
 Para lanzar el job en la infraestructura de Google Cloud, asegúrate de tener configurado tu entorno y ejecuta:
 
+
+
+
 ```bash
 git clone https://github.com/ai360Daniel/movilidad
 cd movilidad
 
+# 1. Obtener el número de tu proyecto automáticamente
+PROJ_NUM=$(gcloud projects list --filter="project_id:movilidad-491219" --format='value(project_number)')
+
+# 2. Darle permiso total de escritura al agente de servicio en el bucket
+gcloud projects add-iam-policy-binding movilidad-491219 \
+    --member="serviceAccount:service-$PROJ_NUM@dataflow-service-producer-prod.iam.gserviceaccount.com" \
+    --role="roles/storage.objectAdmin"
 
 ```bash
 python3 -m venv venv
@@ -43,12 +53,17 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
+# Crear un bucket nuevo en la misma región
+gsutil mb -l us-central1 gs://temp-movilidad-pipeline
 
-```bash
-python procesar_movilidad2.py \
+# Lanzar el job usando este nuevo bucket para staging y temp
+python3 procesar_movilidad2.py \
     --project movilidad-491219 \
     --region us-central1 \
     --runner DataflowRunner \
-    --temp_location gs://datalake_movilidad/temp \
+    --temp_location gs://temp-movilidad-pipeline/temp \
+    --staging_location gs://temp-movilidad-pipeline/staging \
     --requirements_file requirements.txt \
-    --save_main_session True
+    --save_main_session
+
+
